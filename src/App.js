@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
 
-const API_BASE_URL = "https://oc-03032d383a394b22b7f89260f7135f8d.ecs.us-east-1.on.aws";
+//const API_BASE_URL = "https://oc-03032d383a394b22b7f89260f7135f8d.ecs.us-east-1.on.aws";
+const API_BASE_URL = "http://localhost:8080";
 
-// Formats PascalCase class names like "PalpatophoraUtiliformis" -> "Palpatophora utiliformis"
 function formatSpeciesName(raw) {
   return raw
     .replace(/([a-z])([A-Z])/g, "$1 $2")
@@ -19,12 +19,20 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleFileSelected = (file) => {
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  const handleFileSelected = (e) => {
+    const file = e.target.files?.[0];
     if (!file) return;
     setSelectedFile(file);
     setPreviewUrl(URL.createObjectURL(file));
     setResult(null);
     setError(null);
+    e.target.value = "";
   };
 
   const handleClassify = async () => {
@@ -61,7 +69,6 @@ export default function App() {
       <p className="subtitle">Take a photo or upload a bread clip against a plain background.</p>
 
       <div className="button-row">
-        {/* Opens rear camera directly on mobile devices */}
         <label className="btn secondary">
           Take Photo
           <input
@@ -69,25 +76,30 @@ export default function App() {
             accept="image/*"
             capture="environment"
             hidden
-            onChange={(e) => handleFileSelected(e.target.files?.[0])}
+            onChange={handleFileSelected}
           />
         </label>
 
-        {/* Opens standard file picker on desktop & mobile */}
         <label className="btn secondary">
           Upload Image
           <input
             type="file"
             accept="image/jpeg,image/png,image/webp"
             hidden
-            onChange={(e) => handleFileSelected(e.target.files?.[0])}
+            onChange={handleFileSelected}
           />
         </label>
       </div>
 
       {previewUrl && (
         <div className="preview-card">
-          <img src={previewUrl} alt="Selected occlupanid" className="preview-img" />
+          <img
+            src={previewUrl}
+            alt="Selected occlupanid"
+            width={224}
+            height={224}
+            className="preview-img"
+          />
           <button className="btn primary" onClick={handleClassify} disabled={loading}>
             {loading ? "Identifying..." : "Identify Species"}
           </button>
