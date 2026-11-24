@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 
-//const API_BASE_URL = "https://oc-03032d383a394b22b7f89260f7135f8d.ecs.us-east-1.on.aws";
-const API_BASE_URL = "http://localhost:8080";
+const API_BASE_URL = "https://oc-03032d383a394b22b7f89260f7135f8d.ecs.us-east-1.on.aws";
+//const API_BASE_URL = "http://localhost:8080";
 
 function formatSpeciesName(raw) {
   return raw
