@@ -3,6 +3,7 @@ import "./App.css";
 
 const API_BASE_URL = "https://oc-03032d383a394b22b7f89260f7135f8d.ecs.us-east-1.on.aws";
 //const API_BASE_URL = "http://localhost:8080";
+const TARGET_SIZE = 224;
 
 function formatSpeciesName(raw) {
   return raw
@@ -12,8 +13,61 @@ function formatSpeciesName(raw) {
     .join(" ");
 }
 
+function cropAndResizeTo224(file) {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+
+      const srcWidth = img.naturalWidth;
+      const srcHeight = img.naturalHeight;
+      const cropSize = Math.min(srcWidth, srcHeight);
+      const offsetX = (srcWidth - cropSize) / 2;
+      const offsetY = (srcHeight - cropSize) / 2;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = TARGET_SIZE;
+      canvas.height = TARGET_SIZE;
+
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(
+        img,
+        offsetX,
+        offsetY,
+        cropSize,
+        cropSize,
+        0,
+        0,
+        TARGET_SIZE,
+        TARGET_SIZE
+      );
+
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error("Failed to process image."));
+          }
+        },
+        "image/jpeg",
+        0.95
+      );
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Could not load selected image."));
+    };
+
+    img.src = objectUrl;
+  });
+}
+
 export default function App() {
-  const [selectedFile, setSelectedFile] = useState(null);
+  const [processedBlob, setProcessedBlob] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -25,24 +79,31 @@ export default function App() {
     };
   }, [previewUrl]);
 
-  const handleFileSelected = (e) => {
+  const handleFileSelected = async (e) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
-    setSelectedFile(file);
-    setPreviewUrl(URL.createObjectURL(file));
+
     setResult(null);
     setError(null);
-    e.target.value = "";
+
+    try {
+      const croppedBlob = await cropAndResizeTo224(file);
+      setProcessedBlob(croppedBlob);
+      setPreviewUrl(URL.createObjectURL(croppedBlob));
+    } catch (err) {
+      setError(err.message || "Failed to process image.");
+    }
   };
 
   const handleClassify = async () => {
-    if (!selectedFile) return;
+    if (!processedBlob) return;
     setLoading(true);
     setError(null);
 
     try {
       const formData = new FormData();
-      formData.append("image", selectedFile);
+      formData.append("image", processedBlob, "occlupanid_224.jpg");
 
       const response = await fetch(`${API_BASE_URL}/predict`, {
         method: "POST",
